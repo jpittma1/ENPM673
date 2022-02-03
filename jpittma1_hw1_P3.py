@@ -62,8 +62,12 @@ for row in csvreader:
 # print(charges)  
 file.close()
 
+A=np.column_stack((ages,charges))
+# print("combined matrix A is" , A)
+
 #Create Covariance Matrix
-S_x, S_y=createCovarianceMatrix(ages,charges)
-print("covariance of x is ",S_x)
-print("covariance of y is ",S_y)
+# S_x, S_y=createCovarianceMatrix(ages,charges)
+# S=createCovarianceMatric(A)
+# print("covariance of x is ",S_x)
+# print("covariance of y is ",S_y)
 
