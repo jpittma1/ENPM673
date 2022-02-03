@@ -34,11 +34,13 @@ pixel_width=math.sqrt(resolution)
 pixel_height=pixel_width
 #print(N(pixel_width,7))
 
-x=(z*pixel_width)/focal_length
-y=(z*pixel_width)/focal_length
+x_prime=(pixel_width*focal_length)/z
+print(x_prime)
+y_prime=(pixel_height*focal_length)/z
 
-projected_pixels=x*y
+projected_pixels=x_prime*y_prime
+print(projected_pixels)
 
-print("\nBased on a 5 MPix camera, ")
-print("The object is projected at ", N(x,5),  "horizontal pixels and ")
-print(N(y,5), "pixels vertically, equalling ", N(projected_pixels/1000000,5), "pixels in total")
+print("\nBased on a 5 MPix camera with object 20 meters away, ")
+print("The object is projected at ", N(x_prime,5),  "horizontal pixels and ")
+print(N(y_prime,5), "pixels vertically, equalling ", N(projected_pixels,5), "pixels in total")
