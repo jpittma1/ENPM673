@@ -161,6 +161,7 @@ plt.scatter(x_2,y_2,c='pink',label='data points')
 plt.plot(x_2,y2_ls, c='blue', label='Least Squares')
 plt.legend()
 
+plt.savefig('jpittma1_homework1_p2.png')
 plt.show()
 
 vid1.release()
