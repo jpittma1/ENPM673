@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import math
 from sympy import N
 
-##----PROBLEM 1----
+#----PROBLEM 1----
 #--Part 1: Compute Field of View
 camera_width=0.014 #14mm square shaped
 camera_height=0.014
@@ -25,7 +25,6 @@ HFOV=2*height_halfAngle
 print("Horizontal Field of View is: ", N(HFOV,4))
 print("Vertical Field of View is: ",N(VFOV,4))
 
-
 #--Part 2: Compite minimum number of pixels object occupy in image
 object_width=0.50 #5cm
 object_height=object_width
@@ -34,6 +33,21 @@ resolution=5000000 #5MPix
 pixel_width=math.sqrt(resolution)
 pixel_height=pixel_width
 #print(N(pixel_width,7))
+
+# x=(z*pixel_width)/focal_length
+# print(x)
+# y=(z*pixel_height)/focal_length
+# print(y)
+# x_prime=(pixel_width*focal_length)/z
+# # print(x_prime)
+# y_prime=(pixel_height*focal_length)/z
+
+# projected_pixels=x_prime*y_prime
+# print(projected_pixels)
+
+# print("\nBased on a 5 MPix camera with object 20 meters away, ")
+# print("The object is projected at ", N(x_prime,5),  "horizontal pixels and ")
+# print(N(y_prime,5), "pixels vertically, equalling ", N(projected_pixels,5), "pixels in total")
 
 object_pixel_height=(focal_length*object_height*pixel_height)/(z*camera_height)
 min_pixels_object=object_pixel_height*object_pixel_height
