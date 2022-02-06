@@ -4,6 +4,7 @@
 #jpittma1@umd.edu
 #Homework #1; Problem # 3
 
+from inspect import CO_VARKEYWORDS
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -12,15 +13,15 @@ from sympy import N
 from numpy import linalg as LA
 import csv
 
-def solveCovariance(A):
+def solveCovariance(cov_A):
     #S=1/(n-1)*sum[(x-mean)*(x-mean).T]
-    # print("mean is matrix is ", A.mean(axis=0))
-    A-=A.mean(axis=0)
+    x_minus_mean=cov_A-cov_A.mean(axis=0)
     
-    n=len(A)
+    # -PUT IN REPORT: cov_A-=cov_A.mean(axis=0)
+    n=len(cov_A)
     norm=n-1
     
-    covarianceMatrix=np.dot(A.T, A.conj())/norm
+    covarianceMatrix=np.dot(x_minus_mean.T, x_minus_mean.conj())/norm
     print("covarianceMatrix is ",covarianceMatrix)
     
     eigenvalues,eigenvectors=LA.eig(covarianceMatrix)
@@ -29,33 +30,32 @@ def solveCovariance(A):
     
     return covarianceMatrix, eigenvectors, eigenvalues
 
-def calcStandardLeastSquares(stack):
+def calcStandardLeastSquares(points):
     #x=(A.T*A)inv*A.T*b
     #B=(X.T*X)inv*(X.T*Y)
-    x_axis=stack[:,0]
-    y_axis=stack[:,1]
+    x_axis=points[:,0]
+    # print("x_axis is ", x_axis)
+    y_axis=points[:,1]
     
-    x_squared=np.power(x_axis, 2)
+    #Line equation (y=ax + b)
+    d = np.stack((x_axis, np.ones((len(x_axis)), dtype = int)), axis = 1) 
     
-    #Parabolic quadratic equation (y=ax^2 + bx +c)
-    A = np.stack((x_squared, x_axis, np.ones((len(x_axis)), dtype = int)), axis = 1) 
-    
-    A_transpose = A.transpose()
-    ATA = A_transpose.dot(A)
-    ATY = A_transpose.dot(y_axis)
-    ls_estimate = (np.linalg.inv(ATA)).dot(ATY)
-    ls_value= A.dot(ls_estimate)
+    d_transpose = d.transpose()
+    dTd = d_transpose.dot(d)
+    dTY = d_transpose.dot(y_axis)
+    ls_estimate = (np.linalg.inv(dTd)).dot(dTY)
+    ls_value= d.dot(ls_estimate)
     
     return ls_value
 
-def calcLeastSquares(A,y):
+def calcLeastSquares(e,y):
     #x=(A.T*A)inv*A.T*b
     #B=(X.T*X)inv*(X.T*Y)
     
-    A_transpose = A.transpose()
-    ATA = A_transpose.dot(A)
-    ATY = A_transpose.dot(y)
-    ls_estimate = (np.linalg.inv(ATA)).dot(ATY)
+    e_transpose = e.transpose()
+    eTe = e_transpose.dot(e)
+    eTY = e_transpose.dot(y)
+    ls_estimate = (np.linalg.inv(eTe)).dot(eTY)
 
     # print("shape of RANSAC ls_estimate is ", ls_estimate.shape)
   
@@ -92,99 +92,82 @@ def computeSVD(A):
     #U-transpose dot sigma_inv dot A
     VT=sigma_inv.dot(U.T)
     VT=VT.dot(A)
+    
     # print("VT is ", VT)
     
     return U, sigma_inv, VT
 
 def calcTotalLeastSquares (x_values,y_values):
-    #need to solve for x^2, x^3, x^4, xy,x^2y, xy^2
-    x=x_values
-    y=y_values
-    #initialize tables
-    x2=[] #x squared
-    x3=[] #x cubed
-    x4=[] #x fourth powered
-    xy=[] #x*y
-    x2y=[] #x squared times y
+    #b=w+sqrt(w^2+r^2)/r
+    #w=sum(y-ymean)^2-sum(x-xmean)^2
+    #r=2*sum*(x-xmean)*(y-ymean)
+    #a=ymean-b*xmean
     
-    #solve for terms
-    for i in range(len(x)):
-        x2.append(float(x[i]**2))
-        x3.append(float(x[i]**3))
-        x4.append(float(x[i]**4))
-        xy.append(float(x[i]*y[i]))
-        x2y.append(float(x[i]**2)*y[i])
-        
-    #initialize sums
-    sum_n=0.0
-    sum_x=0.0
-    sum_y=0.0
-    sum_x2=0.0
-    sum_x3=0.0
-    sum_x4=0.0
-    sum_xy=0.0
-    sum_x2y=0.0
+    #STEP 1: Create U matrix (difference from mean)
+    x_tls=x_values
+    y_tls=y_values
     
-    #solve for sums
-    for i in range(len(x)):
-        sum_n+=i
-        sum_x+=x[i]
-        sum_y+=y[i]
-        sum_x2+=x2[i]
-        sum_x3+=x3[i]
-        sum_x4+=x4[i]
-        sum_xy+=xy[i]
-        sum_x2y+=x2y[i]
+    n = len(x_tls)
     
-    #a, b, and c equations
-    #y=ax^2+b*x+c*n
-    #xy=a*x^3+b*x^2+c*x
-    #x2y=a*x^4+b*x^3+c*c^2
-    a=np.array([[sum_x2,sum_x,sum_n],
-                [sum_x3,sum_x2,sum_x],
-                [sum_x4,sum_x3,sum_x2]])
+    x_mean=np.mean(x_tls)
+    y_mean=np.mean(y_tls)
     
-    b=np.array([sum_y, sum_xy, sum_x2y])
+    U=np.vstack(((x_tls-x_mean),(y_tls-y_mean))).T
+    # print("U is ", U)
+    # print("U shape is ", U.shape)
     
-    U,sigma, VT= computeSVD(a)
+    #STEP 2: Create UTU matrix
+    UTU=np.dot(U.transpose(),U)
+    # print("UTU shape is ", UTU.shape)
     
-    coefficients=VT.T.dot(sigma.dot(U.T.dot(b)))
-    A=coefficients[0]
-    B=coefficients[1]
-    C=coefficients[2]
+    #STEP 3: Solve for coeffiecients of d=ax+b
+    beta=np.dot(UTU.transpose(),UTU)
+    
+    #Get eigenvalues(w) and eigenvectors (v)
+    w,v=LA.eig(beta)
+    
+    #find index of smallest eigenvalue
+    index=np.argmin(w)
+    #get corresponding eigenvector
+    coefficients=v[:,index]
+    # print("coefficients are", coefficients)
+    # print("coefficients shape is ", coefficients.shape)
+    
+    a,b=coefficients
+    D=a*x_mean+b
     
     tls_value=[]
-    
-    for i in range(0,len(x)):
-        y_temp=(A*(x[i]**2))+(B*x[i])+C
+    for i in range(0,n):
+        # y_temp=D-(a*x_tls[i])
+        y_temp=(D-(a*x_tls[i]))/b
         tls_value.append(y_temp)
+        
+    # print("tls_value ",tls_value )
     
     return tls_value
 
 def calcRANSAC(array):
-    x=array[:,0]
+    xray=array[:,0]
     y=array[:,1]
     
     #STEP 1: Randomly select small subset of points
-    x2=np.power(x,2)
     
-    #create parabolic polynomial array
-    A=np.stack((x2,x,np.ones((len(x)),dtype=int)),axis=1)
+    #create line array
+    arr=np.stack((xray,np.ones((len(xray)),dtype=int)),axis=1)
     # print("shape of calcRANSAC A is ", A.shape)
     
     #create threshold for outliers vs inliers
     threshold=np.std(y)/3  #best curve when sd/3. sd/2 and sd/5 also worked okay
     
     #STEP 2: Fit model to subset points (2 points)
-    ransac_model_test=ransacFit(A,y,2, threshold)
+    #---Repeat until have best model
+    ransac_model_test=ransacFit(arr,y,2, threshold)
     
-    ransac_solution=A.dot(ransac_model_test)
-    
-    #STEP 4: Repeat until have best model
-    
+    ransac_solution=arr.dot(ransac_model_test)
+
     return ransac_solution
 
-def ransacFit(A,y,sample_size,threshold):
+def ransacFit(arr_ransac,y,sample_size,threshold):
     iter_max=math.inf
     iter=0
     max_inliers=0
@@ -192,11 +175,12 @@ def ransacFit(A,y,sample_size,threshold):
     prob_outlier=0
     prob_desired=0.95 #95 percent accurate probability
     
-    data=np.column_stack((A,y))
+    data=np.column_stack((arr_ransac,y))
     # print("shape of data is ", data.shape)
     
     data_size=len(data)
     # print("A is ", A)
+    
     #STEP 3: Find all remaining points that are close to model and reject others
     #randomly iterate through data based on sample size
     while iter_max >iter:
@@ -215,7 +199,7 @@ def ransacFit(A,y,sample_size,threshold):
         # print("iter_model " , iter_model)
         
         #count inliers within threshold
-        inliers=A.dot(iter_model)
+        inliers=arr_ransac.dot(iter_model)
         
         err=np.abs(y-inliers.T)
         
@@ -237,13 +221,76 @@ def ransacFit(A,y,sample_size,threshold):
         iter+=1
         
     return best_model
-        
+  
+def plotter(orig, eig1, eig2, ages, charges, charges_ls, charges_tls, charges_ransac):
+    #plotting Part 1
+    fig = plt.figure(1)
+    plt.title('Jerry Pittman Homework #1')
+    plt.xlabel('X Axis')
+    plt.ylabel('Y Axis')
+    plt.scatter(ages,charges,c='red', label='Ages vs Insurance Cost')
+    plt.quiver(*orig,*eig1, color=['r'],label='X Eigenvector')
+    plt.quiver(*origin,*eig2, color=['b'],label='Y Eigenvector')
+    plt.legend()
+    plt.title('Part 1, Eigenvectors')
     
-#---Problem 3
-#Task Fit line for age and insurance cost
+    # plotting of Part 2
+    plt.figure(2)
+    plt.xlabel('X Axis')
+    plt.ylabel('Y Axis')
+    plt.title('Part 2, LS curve fitting')
+    plt.scatter(ages,charges,c='r',label='data points')
+    plt.plot(ages,charges_ls, c='blue', label='Linear Least Squares')
+    plt.savefig('jpittma1_homework1_p3_LS.png')
+    plt.legend()
 
-#--PART 1: Solve Covariance and plot eigenvectors
-#Get data from CSV
+    plt.figure(3)
+    plt.xlabel('X Axis')
+    plt.ylabel('Y Axis')
+    plt.title('Part 2, TLS curve fitting')
+    plt.scatter(ages,charges,c='r',label='data points')
+    plt.plot(ages,charges_tls, c='g', label='Total Least Squares')
+    plt.savefig('jpittma1_homework1_p3_TLS.png')
+    plt.legend()
+
+    plt.figure(4)
+    plt.xlabel('X Axis')
+    plt.ylabel('Y Axis')
+    plt.title('Part 2, RANSAC curve fitting')
+    plt.scatter(ages,charges,c='r',label='data points')
+    plt.plot(ages,charges_ransac, c='k', label='RANSAC')
+    plt.savefig('jpittma1_homework1_p3_RANSAC.png')
+    plt.legend()
+
+    plt.figure(5)
+    plt.subplot(121)
+    plt.title('Jerry Pittman Homework #1 Combined Plots')
+    plt.xlabel('X Axis')
+    plt.ylabel('Y Axis')
+    plt.scatter(ages,charges,c='red', label='Ages vs Insurance Cost')
+    plt.quiver(*orig,*eig1, color=['r'],label='X Eigenvector')
+    plt.quiver(*orig,*eig2, color=['b'],label='Y Eigenvector')
+    plt.legend()
+    plt.title('Part 1, Eigenvectors')
+    plt.subplot(122)
+    plt.xlabel('X Axis')
+    plt.ylabel('Y Axis')
+    plt.title('Part 2, Compare curve fittings')
+    plt.scatter(ages,charges,c='r',label='data points')
+    plt.plot(ages,charges_ls, c='blue', label='Linear Least Squares')
+    plt.plot(ages,charges_tls, c='g', label='Total Least Squares')
+    plt.plot(ages,charges_ransac, c='k', label='RANSAC')
+    plt.legend()
+    plt.savefig('jpittma1_homework1_p3_combined.png')
+
+    plt.show()
+          
+#----Problem 3------
+#Task: Fit line for age and insurance cost
+
+#-----PART 1: Solve Covariance (manually) and plot eigenvectors------
+
+#STEP 1: Get data from CSV and make useful
 file=open('ENPM673_hw1_linear_regression_dataset.csv')
 #headers are age, sex, bmi, children, smoker, region, charges
 csvreader=csv.reader(file)
@@ -269,11 +316,11 @@ age=[int(i) for i in ages]
 cost=[float(i) for i in charges]
 # print("charges as floats is: ", cost)
 
-A=np.column_stack((age,cost))
+combined=np.column_stack((age,cost))
+# print("combined is: ", combined)
 
-#---Create Covariance Matrix, find eigenvectors--
-
-S, eig_vect, eig_val=solveCovariance(A)
+#STEP 2: Create Covariance Matrix, find eigenvectors--
+S, eig_vect, eig_val=solveCovariance(combined)
 
 #--Make Eigenvectors plottable
 eig_vec1=eig_vect[:,0]
@@ -281,43 +328,16 @@ eig_vec1=eig_vect[:,0]
 eig_vec2=eig_vect[:,1]
 # print("eig_vec2 is ", eig_vec2)
 
-# print("x center ", np.average(age))
-# print("y center ", np.average(cost))
 origin=[np.mean(age),np.mean(cost)]
 
-#plotting graph 1
-fig = plt.figure(1)
-plt.title('Jerry Pittman Homework #1')
-plt.subplot(121)
-plt.xlabel('X Axis')
-plt.ylabel('Y Axis')
-plt.scatter(age,cost,c='red', label='Ages vs Insurance Cost')
-plt.quiver(*origin,*eig_vec1, color=['r'],label='X Eigenvector')
-plt.quiver(*origin,*eig_vec2, color=['b'],label='Y Eigenvector')
-plt.legend()
-plt.title('Part 1, Eigenvectors')
-
-#----Part 2: LS, TLS, and RANSAC----
+#-------------Part 2: LS, TLS, and RANSAC-----------
 #--Calculate LS using methodology of Problem 2--
-cost_ls=calcStandardLeastSquares(A)
-# print("Linear Least Squares ", cost_ls)
+cost_ls=calcStandardLeastSquares(combined)
 
 #--Calculate TLS--
 cost_tls=calcTotalLeastSquares(age,cost)
 
 #--Calculate RANSAC--
-cost_ransac=calcRANSAC(A)
+cost_ransac=calcRANSAC(combined)
 
-# plotting of curve fitting against data
-plt.subplot(122)
-plt.xlabel('X Axis')
-plt.ylabel('Y Axis')
-plt.title('Part 2, compare curve fitting')
-plt.scatter(age,cost,c='r',label='data points')
-plt.plot(age,cost_ls, c='blue', label='Linear Least Squares')
-plt.plot(age,cost_tls, c='g', label='Total Least Squares')
-plt.plot(age,cost_ransac, c='m', label='RANSAC')
-plt.legend()
-
-plt.show()
-plt.savefig('jpittma1_homework1_p3.png')
+plotter(origin, eig_vec1,eig_vec2,age, cost, cost_ls, cost_tls, cost_ransac)
