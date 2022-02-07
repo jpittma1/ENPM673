@@ -150,7 +150,7 @@ def calcRANSAC(array):
     xray=array[:,0]
     y=array[:,1]
     
-    #STEP 1: Randomly select small subset of points
+    #STEP 1: Randomly select small stltlubset of points
     
     #create line array
     arr=np.stack((xray,np.ones((len(xray)),dtype=int)),axis=1)
@@ -334,7 +334,7 @@ origin=[np.mean(age),np.mean(cost)]
 #-------------Part 2: LS, TLS, and RANSAC-----------
 #--Calculate LS using methodology of Problem 2--
 cost_ls=calcStandardLeastSquares(combined)
-
+  
 #--Calculate TLS--
 cost_tls=calcTotalLeastSquares(age,cost)
 
