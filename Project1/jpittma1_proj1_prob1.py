@@ -13,16 +13,15 @@ from scipy import fft, ifft
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
 import sys
-from  PIL  import Image
 
 #Problem#1- AR Detection and Decode
 
-#1 a: AR Code Detection
-# def findHomography():
+#1 a: AR Code Detection----------------
 
 def removeBackground(img):
     original = img.copy()
 
+     #-------Remove the background--------
     l = 85 #255/3
     u = 255
 
@@ -61,15 +60,15 @@ def removeBackground(img):
     
     img_rgb=cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
 
-    # Cropping an image
+    #---Cropping the background and white paper from image--------
     # print("size in rows", img_rgb.shape[0])
     # print("size in columns", img_rgb.shape[1])
     cropped_image = img_rgb[520:680, 1020:1180]
 
-    # # Display cropped image
+    # Display cropped image
     # cv2.imshow("cropped", cropped_image)
 
-    # # Save the cropped image
+    # Save the cropped image
     cv2.imwrite("Cropped_Image.jpg", cropped_image)
     
     return cropped_image
@@ -77,11 +76,11 @@ def removeBackground(img):
     
 #Converts to grayscale, conducts FFT, finds edges
 def conductFFTonImage(image):
-    #STEP1: convert to grayscale
+    #STEP1: convert to grayscale-------
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # cv2.imshow('image_gray',image_gray)
     
-    #STEP 2: blur image using FFT
+    #STEP 2: blur image using FFT------------
     image_grey = image_gray.copy()
     
     fft_blur = scipy.fft.fft2(image_grey, axes = (0,1))
@@ -100,7 +99,7 @@ def conductFFTonImage(image):
     X, Y = np.meshgrid(x,y)
     mask = np.exp(-(np.square((X - x_center)/sigma_x) + np.square((Y - y_center)/sigma_y)))
     
-    #apply mask to fft_blur
+    #apply mask to fft_blurred image
     fft_masked_blur = fft_shift_blur * mask
     mag_masked_blur = 20*np.log(np.abs(fft_masked_blur))
 
@@ -119,13 +118,8 @@ def conductFFTonImage(image):
     plts1[1][0].set_title('Mask + FFT of Gray Image')
     plts1[1][1].imshow(img_back_blur, cmap = 'gray')
     plts1[1][1].set_title('Blurred Image')
-    plt.savefig("blurred_image.jpg")
+    plt.savefig("blurred_image_compare.jpg")
     
-    
-
-    
-
-
 #Read the video, save a frame
 vid1=cv2.VideoCapture('1tagvideo.mp4')
 success,image1 = vid1.read()
@@ -137,7 +131,6 @@ if (vid1.isOpened() == False):
     print('Please check the file name again and file location!')
 
 while success:
-    
     #To save frame 133 (frame I found has AR in correct orientation)
     if count==133:
         cv2.imwrite("1tagvideo_frame%d.jpg" % count, image1)     # save frame as JPEG file           
@@ -157,9 +150,9 @@ print ("Image cropped saved as 'Cropped_Image.jpg'")
 conductFFTonImage(img_AR_only)
 print("The image of the AR tag using FFT is saved as 'blurred_image.jpg'")
 
-#----1b: AR Code Decode-------
+#------------1b: AR Code Decode------------------
 def readARtagFromImage(image):
-    #STEP 1: Get corners
+    #STEP 1: Get corners----------
     marked_corners=image.copy()
     
     #Get tag corners using Shi-Tomasi
@@ -177,7 +170,7 @@ def readARtagFromImage(image):
     cv2.imwrite('corners_marked_up.jpg', marked_corners)
     # plt.imshow(marked_corners)
     
-    #STEP 2: Get Tag from Image
+    #STEP 2: Get Tag from Image---------
     img2=gray_img.copy()
     img2 = cv2.GaussianBlur(img2, (21, 21), 0)
     
@@ -185,7 +178,7 @@ def readARtagFromImage(image):
     # ret,img_thresh = cv2.threshold(np.uint8(img2), 200 ,255,cv2.THRESH_BINARY)
     # print("Thresholds are ", img_thresh)
     
-    #STEP 3: Get Information from Tag
+    #STEP 3: Get Information from Tag------------
 
     return corners
     # return corners, AR_info
@@ -197,19 +190,19 @@ tag_corners=readARtagFromImage(img_AR_only)
 print("The image of the AR tag corners marked up is saved as 'marked_up_image.jpg'")
 # print("The April tag corners are ", tag_corners)
 
-#STEP 4: Translate Tag information to Binary
+#STEP 4: Translate Tag information to Binary--------------
 
-# def decodeARcode(AR_info):
+# def translateARcode(AR_info):
 #     while not AR_info[3,3]:
 #         AR_info = np.rot90(AR_info, 1)
 
 #     # print(AR_info)
 #     id_info = AR_info[1:3, 1:3]
-#     id_info_flat = np.array([id_info[0,0], id_info[0,1], id_info[1,1], id_info[1,0]])
+#     id_info_linear = np.array([id_info[0,0], id_info[0,1], id_info[1,1], id_info[1,0]])
 #     id = 0
 #     id_bin = []
 #     for i in range(4):
-#         if(id_info_flat[i]):
+#         if(id_info_linear[i]):
 #             id = id + 2**(i)
 #             id_bin.append(1)
 #         else:
@@ -219,7 +212,7 @@ print("The image of the AR tag corners marked up is saved as 'marked_up_image.jp
 
 #     return id, id_bin
 
-# tag, tag_in_binary= decodeARcode(tag_info)
+# tag, tag_in_binary= translateARcode(tag_info)
 
 
 # print("The April tag in binary is ", tag_in_binary)
@@ -229,5 +222,3 @@ print("The image of the AR tag corners marked up is saved as 'marked_up_image.jp
 
 if cv2.waitKey(0) & 0xff == 27: 
     cv2.destroyAllWindows()
-
-
