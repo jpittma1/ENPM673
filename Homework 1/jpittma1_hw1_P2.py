@@ -97,6 +97,9 @@ count2 = 0
 x_1=[]
 y_1=[]
 
+if (vid1.isOpened() == False):
+    print('Please check the file name again and file location!')
+
 while success:
     
     a,b = findCoordinatesCenter(image1)
