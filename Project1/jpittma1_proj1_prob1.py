@@ -170,6 +170,14 @@ def readARtagFromImage(image):
     cv2.imwrite('corners_marked_up.jpg', marked_corners)
     # plt.imshow(marked_corners)
     
+    #---Sort corners---
+    x_corners=
+    y_corners=
+    
+    # corners_sorted = 
+    # print("Corners Sorted of AR tag are: ", corners_sorted)
+    
+    
     #STEP 2: Get Tag from Image---------
     img2=gray_img.copy()
     img2 = cv2.GaussianBlur(img2, (21, 21), 0)
