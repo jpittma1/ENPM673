@@ -152,7 +152,7 @@ print("The image of the AR tag using FFT is saved as 'blurred_image.jpg'")
 
 #------------1b: AR Code Decode------------------
 def readARtagFromImage(image):
-    #STEP 1: Get corners----------
+    #----STEP 1: Get corners----------
     marked_corners=image.copy()
     
     #Get tag corners using Shi-Tomasi
@@ -170,23 +170,26 @@ def readARtagFromImage(image):
     cv2.imwrite('corners_marked_up.jpg', marked_corners)
     # plt.imshow(marked_corners)
     
-    #---Sort corners---
-    x_corners=
-    y_corners=
     
-    # corners_sorted = 
-    # print("Corners Sorted of AR tag are: ", corners_sorted)
-    
-    
-    #STEP 2: Get Tag from Image---------
-    img2=gray_img.copy()
-    img2 = cv2.GaussianBlur(img2, (21, 21), 0)
+    #---STEP 2: Get Tag from Image (make into 2x2 grid)---------
+    # img2=gray_img.copy()
+    # img2 = cv2.GaussianBlur(img2, (21, 21), 0)
     
     #threshold image using THRESH_BINARY
     # ret,img_thresh = cv2.threshold(np.uint8(img2), 200 ,255,cv2.THRESH_BINARY)
     # print("Thresholds are ", img_thresh)
+    #---Sort corners---
     
-    #STEP 3: Get Information from Tag------------
+    # print("Corners Sorted of AR tag are: ", corners_sorted)
+    
+    #Determine corners of 2x2 grid
+    
+    # print("Corners of 2x2 grid of AR tag are: ", small_grid)
+   
+    
+    #---STEP 3: Get Information from Tag (make into 4 cells)-------
+    #save representation of tag's ID as AR_info
+    #ordered clockwise direction starting from clockwise direction
 
     return corners
     # return corners, AR_info
