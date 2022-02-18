@@ -149,7 +149,7 @@ while(vid.isOpened()):
             if show_cube == True:   
                 edge_color = (0, 0, 0) #black
                 face_color = (0,0, 255) #red
-                corner_dim=200
+                corner_dim=10
                 H_cube=solveHomography(tag,corner_dim)
                 H_inv_cube=np.linalg.inv(H_cube)
                 P=solveProjectionMatrix(K , H_inv_cube)
