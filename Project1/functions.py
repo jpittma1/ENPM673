@@ -348,7 +348,7 @@ def markUpImageCorners(image):
     # cv2.imwrite('corners_marked_up.jpg', marked_corners)
     return marked_corners
 
-#Problem 2 only functions
+#-------Problem 2 only functions----------
 #To orientate Testudo image to match the orientation of the AR tag thoughout the movie
 #   specifically up, down, left, and right
 def rotateTestudo(image, orientation):
@@ -401,63 +401,89 @@ def solveProjectionMatrix(K , H):
     return projectionMatrix
 
 #solves for points directly above tag to build a cube from
-def solveCubePoints(corners, H, P, dim):
-    cube_corners=[]
+def projectionPoints(points, P):
+    projected_corners=[]
+    Xi = points[:, 0]
+    Yi = points[:, 1]
+    Zi = points[:, 2]
 
-    #Separate corners of tag into x and y coordinates
-    x = []
-    y = []
-    for point in corners:
-        x.append(point[0])
-        y.append(point[1])
+    X_w = np.stack((Xi, Yi, Zi, np.ones(Xi.size)))
     
-    #Camera homogenous coordinates
-    X_c = np.stack((np.array(x),np.array(y),np.ones(len(x))))
-
-    #scaled homogenous coordinates in world frame
-    sX_w=np.dot(H,X_c)
-
-    #World frame homography
-    H_w=sX_w/sX_w[2]
-
-    #world frame homogenous coordinates
-    X_w=np.stack((H_w[0],H_w[1],np.full(4,-dim),np.ones(4)),axis=0)
-
-    #scaled homogenous coordinates in world frame
-    sX_c=np.dot(P,X_w)
+    #use Projection Matrix to shift points to camera frame
+    sX_c2=np.dot(P,X_w)
     
     #camera frame homography
-    H_c=sX_c/(sX_c[2])
+    X_c2=sX_c2/sX_c2[2]
+    
+    # x = X_c2[0,:].astype(int)
+    # y = X_c2[1,:].astype(int)
 
     for i in range(4):
-        cube_corners.append([int(H_c[0][i]),int(H_c[1][i])])
-
-    return cube_corners
-
-#draw cube based on scaled coordinates of cube points
-def drawCube(tag_corners, cube_corners,frame,face_color,edge_color):
-    thickness=5
+    	projected_corners.append([int(X_c2[0][i]),int(X_c2[1][i])])
     
-    cube_contours = connectCubeCornerstoTag(tag_corners,cube_corners)
-    for contour in cube_contours:
-        cv2.drawContours(frame,[contour],-1,face_color,thickness=-1)
+    # projected_corners = np.dstack((x,y)).reshape(4,2)
+    
+    # projected_corners=[]
+    # #Separate corners of tag into x and y coordinates
+    # x = []
+    # y = []
+    # for point in AR_corners:
+    #     x.append(point[0])
+    #     y.append(point[1])
 
-    for i, point in enumerate(tag_corners):
-        cv2.line(frame, tuple(point), tuple(cube_corners[i]), edge_color, thickness) 
+    # # Camera homogenous coordinates
+    # # X_c1=[x1, x2,x3, x4],
+    # #     [y1, y2,y3, y4],
+    # #     [1,  1,1,    1]
+    
+    # #AR tag coordinates in image plane
+    # X_c1 = np.stack((np.array(x),np.array(y),np.ones(len(x))))
+    # # print("skewed camera bottom corner points ",X_c)
 
-    for i in range (4):
-        if i==3:
-            cv2.line(frame,tuple(tag_corners[i]),tuple(tag_corners[0]),edge_color,thickness)
-            cv2.line(frame,tuple(cube_corners[i]),tuple(cube_corners[0]),edge_color,thickness)
-        else:
-            cv2.line(frame,tuple(tag_corners[i]),tuple(tag_corners[i+1]),edge_color,thickness)
-            cv2.line(frame,tuple(cube_corners[i]),tuple(cube_corners[i+1]),edge_color,thickness)
+    # # #scaled homogenous coordinates in world frame
+    # sX_s=np.dot(H,X_c1)
 
-    return frame
+    # #normalize so last row is 12t
+    # X_s=sX_s/sX_s[2]
+
+    # #points shifted in world frame
+    # # x(w)= [0, 0, −1,1]T
+    # # X_w= np.array([[0], [0],[-1],[1]])
+    # X_w=np.stack((X_s[0],X_s[1],np.full(4,-dim),np.ones(4)),axis=0)
+    # # print("skewed camera top corner points ",X_w)
+
+    # #use Projection Matrix to shift back to camera frame
+    # sX_c2=np.dot(P,X_w)
+
+    # #camera frame homography
+    # X_c2=sX_c2/sX_c2[2]
+
+    # for i in range(4):
+    #     projected_corners.append([int(X_c2[0][i]),int(X_c2[1][i])])
+        
+    return projected_corners
+
+# #Organize corners by x values
+# def organizeCorners(corners):
+#     x = corners[np.argsort(corners[:,0])]
+
+#     left = x[0:2, :]
+#     right = x[2:4, :]
+
+#     left_y = left[np.argsort(left[:,1])]
+#     left_top, left_bottom = left_y
+
+#     right_y = right[np.argsort(right[:,1])]
+#     right_top, right_bottom = right_y
+#     corners_cleaned = np.array([left_top, left_bottom, right_bottom, right_top])
+    
+#     return corners_cleaned
 
 def connectCubeCornerstoTag(tag,cube):
+    #tag=tag_corners; cube=cube_corners
     contours = []
     #point 1 (i=0): (0,0), (1,0), (0,1), (1,1)
+    
     for i in range(len(tag)):
         if i==3:
             p1 = tag[i]
@@ -469,10 +495,44 @@ def connectCubeCornerstoTag(tag,cube):
             p2 = tag[i+1]
             p3 = cube[i+1]
             p4 = cube[i]
+        # print("Cube to AR points ", [p1,p2,p3,p4])
          #build array of connecting lines   
         contours.append(np.array([p1,p2,p3,p4], dtype=np.int32))
+        # print("Current contours ", contours[i])
         #append tag corners and top square corners
     contours.append(np.array([tag[0],tag[1],tag[2],tag[3]], dtype=np.int32))
     contours.append(np.array([cube[0],cube[1],cube[2],cube[3]], dtype=np.int32))
 
     return contours
+
+#draw cube based on scaled coordinates of cube points
+def drawCube(bottom, top,frame,face_color,edge_color):
+    thickness=3
+    #-1 for fill; 0 for transparent
+    # cv2.drawContours(frame,[bottom],0,face_color,thickness)
+    # cv2.drawContours(frame,[top],0,face_color,thickness)
+    
+    #Lines connecting top and bottom of cube
+    sides= connectCubeCornerstoTag(bottom, top)
+    for s in sides: #red faces of cube
+        cv2.drawContours(frame,[s],0,face_color,thickness)
+        # cv2.drawContours(frame,[contour],-1,face_color,thickness=-1)
+
+    for i in range(4): #black lines
+        cv2.line(frame, (bottom[i,0],bottom[i,1]),(top[i,0],top[i,1]),edge_color,thickness)
+    #     cv2.line(frame,tuple(tag_corners[i]),tuple(tag_corners[0]),edge_color,thickness)
+    #     cv2.line(frame,tuple(cube_corners[i]),tuple(cube_corners[0]),edge_color,thickness)
+    
+    for i, point in enumerate(bottom):
+        cv2.line(frame, tuple(point), tuple(top[i]), edge_color, thickness) 
+
+    #draw square at top of cube and around AR tag (bottom of cube)
+    for i in range (4):
+        if i==3: #connect last corner to first corner
+            cv2.line(frame,tuple(tag_corners[i]),tuple(tag_corners[0]),edge_color,thickness)
+            cv2.line(frame,tuple(cube_corners[i]),tuple(cube_corners[0]),edge_color,thickness)
+        else:
+            cv2.line(frame,tuple(tag_corners[i]),tuple(tag_corners[i+1]),edge_color,thickness)
+            cv2.line(frame,tuple(cube_corners[i]),tuple(cube_corners[i+1]),edge_color,thickness)
+
+    return frame

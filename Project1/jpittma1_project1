@@ -21,8 +21,8 @@ K=np.array([[1346.10059534175,0,932.163397529403],
 
 #----to toggle making Videos----
 #Recommend only 1 at a time
-show_contours = True
-show_Testudo = True
+show_contours = False
+show_Testudo = False
 show_cube = True
 
 #---Read the video, save a frame
@@ -149,16 +149,28 @@ while(vid.isOpened()):
             if show_cube == True:   
                 edge_color = (0, 0, 0) #black
                 face_color = (0,0, 255) #red
-                corner_dim=10
-                H_cube=solveHomography(tag,corner_dim)
-                H_inv_cube=np.linalg.inv(H_cube)
-                P=solveProjectionMatrix(K , H_inv_cube)
+                cube_dim=200 #200
+                # cube_dim=image1.shape[0]
+                
+                cube_height=np.array([-(cube_dim-1),-(cube_dim-1),-(cube_dim-1),-(cube_dim-1)]).reshape(-1,1)
+                cube_corners = np.concatenate((tag, cube_height), axis = 1)
+                # print("Cube corners are (concate): ", cube_corners)
+                # print("cube height is ", cube_height)
                 
                 #solve for points of cube directly above tag
-                cube_corners=solveCubePoints(tag, H_cube, P, corner_dim)
-
+                # corner_dim=dim #match dimension of tag
+                H_cube=solveHomography(tag,cube_dim)
+                H_inv_cube=np.linalg.inv(H_cube)
+                # P=solveProjectionMatrix(K , H_inv_cube)
+                P=solveProjectionMatrix(K , H_cube)
+                
+                #Project cube points above AR tag
+                cube_corners_P=projectionPoints(cube_corners, P)
+                # cube_corners=solveCubePoints(tag, H_cube, P, cube_dim)
+                print("Projected Cube corners are: ", cube_corners_P)
+                
                 #draw contours, lines, and cube on top of AR tag
-                img_plus_cube=drawCube(tag, cube_corners,image1,face_color,edge_color)
+                img_plus_cube=drawCube(tag_contours, cube_corners_P,image1,face_color,edge_color)
                 
         #To save frame 133's as example pictures
         if count==133:
@@ -220,19 +232,22 @@ print("The image of the AR tag warped is saved as 'warped_image_frame133.jpg'")
 print("The image of the AR tag numbered is saved as 'AR_tag_labeled_image_frame133.jpg'")
 
 if show_contours == True:
+    print("The image with contours is saved as 'contours_embedded_image_frame133.jpg'")
     print("Video made named 'jpittma1_proj1_problem1_contours.avi'")
         
 if show_Testudo == True:
+    print("The image with testudo is saved as 'testudp_embedded_image_frame133.jpg'")
     print("Video made named 'jpittma1_proj1_problem2_testudo.avi'")
                 
 if show_cube == True:
+    print("The image with cube is saved as 'cube_embedded_image_frame133.jpg'")
     print("Video made named 'jpittma1_proj1_problem2_cube.avi'")
 
 vid.release()
 if show_contours == True:
-            output.release()
+    output.release()
 if show_Testudo == True:
-            out1.release()
+    out1.release()
 if show_cube == True:
-            out2.release()
+    out2.release()
 cv2.destroyAllWindows()
