@@ -68,9 +68,9 @@ def removeBackground(img):
     l = 85 #255/3
     u = 255
 
-    ed = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    edges = cv2.GaussianBlur(img, (21, 51), 3)
-    edges = cv2.cvtColor(edges, cv2.COLOR_BGR2GRAY)
+    ed = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    edges = cv2.GaussianBlur(ed, (21, 51), 3)
+    # edges = cv2.cvtColor(orginal, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(edges, l, u)
 
     _, thresh = cv2.threshold(edges, 0, 255, cv2.THRESH_BINARY  + cv2.THRESH_OTSU)
@@ -278,9 +278,6 @@ def decodeARtag(frame):
             if roi.mean() > 255//2:  #if white, code as a "1"
                 decode[i][j] = 1
                 cv2.rectangle(april_img,(sx,sy),(sx+k,sy+k),(255,255,255),-1)
-                # cv2.putText(report_img,'1',(sx+int(k*.3),sy+int(k*.7)),font,.6,(255,0,0),2)
-            # else:
-                # cv2.putText(report_img,'0',(sx+int(k*.3),sy+int(k*.7)),font,.6,(255,0,0),2)
             cv2.rectangle(april_img,(sx,sy),(sx+k,sy+k),(127,127,127),1)
             sx += k
         sx = 0
@@ -401,109 +398,72 @@ def solveProjectionMatrix(K , H):
     return projectionMatrix
 
 #solves for points directly above tag to build a cube from
-def projectionPoints(points, P):
-    projected_corners=[]
-    Xi = points[:, 0]
-    Yi = points[:, 1]
-    Zi = points[:, 2]
+def projectionPoints(AR_corners, P, H, size):
 
-    X_w = np.stack((Xi, Yi, Zi, np.ones(Xi.size)))
+    projected_corners=[]
+    #Separate corners of AR tag into x and y coordinates
+    x = []
+    y = []
+    for point in AR_corners:
+        x.append(point[0])
+        y.append(point[1])
+
+    # Camera homogenous coordinates
+    # X_c1=[x1, x2,x3, x4],
+    #      [y1, y2,y3, y4],
+    #      [1,  1,  1,  1]
     
-    #use Projection Matrix to shift points to camera frame
+    #AR tag coordinates in image plane
+    X_c1 = np.stack((np.array(x),np.array(y),np.ones(len(x))))
+    # print("skewed camera bottom corner points ",X_c)
+
+    #scaled homogenous coordinates in world frame
+    sX_s=np.dot(H,X_c1)
+
+    #normalize so last row is "1"
+    X_s=sX_s/sX_s[2]
+
+    #points shifted in world frame
+    # x(w)= [0, 0, −1,1]T
+    #- z direction
+    X_w=np.stack((X_s[0],X_s[1],np.full(4,-size),np.ones(4)),axis=0)
+    print("skewed camera top corner points ",X_w)
+
+    #use Projection Matrix to shift back to camera frame
     sX_c2=np.dot(P,X_w)
-    
+
     #camera frame homography
     X_c2=sX_c2/sX_c2[2]
-    
-    # x = X_c2[0,:].astype(int)
-    # y = X_c2[1,:].astype(int)
 
     for i in range(4):
-    	projected_corners.append([int(X_c2[0][i]),int(X_c2[1][i])])
-    
-    # projected_corners = np.dstack((x,y)).reshape(4,2)
-    
-    # projected_corners=[]
-    # #Separate corners of tag into x and y coordinates
-    # x = []
-    # y = []
-    # for point in AR_corners:
-    #     x.append(point[0])
-    #     y.append(point[1])
-
-    # # Camera homogenous coordinates
-    # # X_c1=[x1, x2,x3, x4],
-    # #     [y1, y2,y3, y4],
-    # #     [1,  1,1,    1]
-    
-    # #AR tag coordinates in image plane
-    # X_c1 = np.stack((np.array(x),np.array(y),np.ones(len(x))))
-    # # print("skewed camera bottom corner points ",X_c)
-
-    # # #scaled homogenous coordinates in world frame
-    # sX_s=np.dot(H,X_c1)
-
-    # #normalize so last row is 12t
-    # X_s=sX_s/sX_s[2]
-
-    # #points shifted in world frame
-    # # x(w)= [0, 0, −1,1]T
-    # # X_w= np.array([[0], [0],[-1],[1]])
-    # X_w=np.stack((X_s[0],X_s[1],np.full(4,-dim),np.ones(4)),axis=0)
-    # # print("skewed camera top corner points ",X_w)
-
-    # #use Projection Matrix to shift back to camera frame
-    # sX_c2=np.dot(P,X_w)
-
-    # #camera frame homography
-    # X_c2=sX_c2/sX_c2[2]
-
-    # for i in range(4):
-    #     projected_corners.append([int(X_c2[0][i]),int(X_c2[1][i])])
+        projected_corners.append([int(X_c2[0][i]),int(X_c2[1][i])])
         
     return projected_corners
 
-# #Organize corners by x values
-# def organizeCorners(corners):
-#     x = corners[np.argsort(corners[:,0])]
-
-#     left = x[0:2, :]
-#     right = x[2:4, :]
-
-#     left_y = left[np.argsort(left[:,1])]
-#     left_top, left_bottom = left_y
-
-#     right_y = right[np.argsort(right[:,1])]
-#     right_top, right_bottom = right_y
-#     corners_cleaned = np.array([left_top, left_bottom, right_bottom, right_top])
-    
-#     return corners_cleaned
-
-def connectCubeCornerstoTag(tag,cube):
-    #tag=tag_corners; cube=cube_corners
-    contours = []
+def connectCubeCornerstoTag(AR_corners,cube_corners):
+    lines = []
     #point 1 (i=0): (0,0), (1,0), (0,1), (1,1)
     
-    for i in range(len(tag)):
+    for i in range(len(AR_corners)):
         if i==3:
-            p1 = tag[i]
-            p2 = tag[0]
-            p3 = cube[0]
-            p4 = cube[i]
+            p1 = AR_corners[i]
+            p2 = AR_corners[0]
+            p3 = cube_corners[0]
+            p4 = cube_corners[i]
         else:
-            p1 = tag[i]
-            p2 = tag[i+1]
-            p3 = cube[i+1]
-            p4 = cube[i]
+            p1 = AR_corners[i]
+            p2 = AR_corners[i+1]
+            p3 = cube_corners[i+1]
+            p4 = cube_corners[i]
         # print("Cube to AR points ", [p1,p2,p3,p4])
          #build array of connecting lines   
-        contours.append(np.array([p1,p2,p3,p4], dtype=np.int32))
+        lines.append(np.array([p1,p2,p3,p4], dtype=np.int32))
         # print("Current contours ", contours[i])
         #append tag corners and top square corners
-    contours.append(np.array([tag[0],tag[1],tag[2],tag[3]], dtype=np.int32))
-    contours.append(np.array([cube[0],cube[1],cube[2],cube[3]], dtype=np.int32))
+    lines.append(np.array([AR_corners[0],AR_corners[1],AR_corners[2],AR_corners[3]], dtype=np.int32))
+    lines.append(np.array([cube_corners[0],cube_corners[1],cube_corners[2],cube_corners[3]], dtype=np.int32))
 
-    return contours
+    return lines
 
 #draw cube based on scaled coordinates of cube points
 def drawCube(bottom, top,frame,face_color,edge_color):

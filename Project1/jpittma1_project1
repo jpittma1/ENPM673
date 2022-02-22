@@ -149,28 +149,32 @@ while(vid.isOpened()):
             if show_cube == True:   
                 edge_color = (0, 0, 0) #black
                 face_color = (0,0, 255) #red
-                cube_dim=200 #200
+                # cube_dim=200 #200
                 # cube_dim=image1.shape[0]
+                cube_dim=dim
+                # print("cube dimension size is ", cube_dim)
                 
-                cube_height=np.array([-(cube_dim-1),-(cube_dim-1),-(cube_dim-1),-(cube_dim-1)]).reshape(-1,1)
-                cube_corners = np.concatenate((tag, cube_height), axis = 1)
+                # cube_height=np.array([-(cube_dim-1),-(cube_dim-1),-(cube_dim-1),-(cube_dim-1)]).reshape(-1,1)
+                # cube_corners = np.concatenate((tag, cube_height), axis = 1)
                 # print("Cube corners are (concate): ", cube_corners)
                 # print("cube height is ", cube_height)
                 
                 #solve for points of cube directly above tag
                 # corner_dim=dim #match dimension of tag
                 H_cube=solveHomography(tag,cube_dim)
-                H_inv_cube=np.linalg.inv(H_cube)
+                # print("Cube Homography Matrix of Cube is: ", H_cube)
+                # H_inv_cube=np.linalg.inv(H_cube)
                 # P=solveProjectionMatrix(K , H_inv_cube)
                 P=solveProjectionMatrix(K , H_cube)
+                # print("Projection Matrix of Cube is: ", P)
                 
                 #Project cube points above AR tag
-                cube_corners_P=projectionPoints(cube_corners, P)
+                cube_corners_P=projectionPoints(tag, P, H_cube, cube_dim)
                 # cube_corners=solveCubePoints(tag, H_cube, P, cube_dim)
-                print("Projected Cube corners are: ", cube_corners_P)
+                # print("Projected Cube corners are: ", cube_corners_P)
                 
                 #draw contours, lines, and cube on top of AR tag
-                img_plus_cube=drawCube(tag_contours, cube_corners_P,image1,face_color,edge_color)
+                img_plus_cube=drawCube(tag, cube_corners_P,image1,face_color,edge_color)
                 
         #To save frame 133's as example pictures
         if count==133:
