@@ -228,7 +228,7 @@ cv2.imwrite('corners_marked_up.jpg', img_marked_up)
 conductFFTonImage(img_AR_only)
 print("The image of the AR tag using FFT is saved as 'blurred_image.jpg'")
 
-print ("Corners AR tag 2x2 grid are: ", corners) 
+print ("Corners AR tag 2x2 grid are (final frame): ", corners) 
 print("Tag ID in binary is ", tag_id_binary)
 print("Tag ID converted to an integer is ", tag_id_int)
 

@@ -427,7 +427,7 @@ def projectionPoints(AR_corners, P, H, size):
     # x(w)= [0, 0, −1,1]T
     #- z direction
     X_w=np.stack((X_s[0],X_s[1],np.full(4,-size),np.ones(4)),axis=0)
-    print("skewed camera top corner points ",X_w)
+    # print("skewed camera top corner points ",X_w)
 
     #use Projection Matrix to shift back to camera frame
     sX_c2=np.dot(P,X_w)
@@ -476,23 +476,18 @@ def drawCube(bottom, top,frame,face_color,edge_color):
     sides= connectCubeCornerstoTag(bottom, top)
     for s in sides: #red faces of cube
         cv2.drawContours(frame,[s],0,face_color,thickness)
-        # cv2.drawContours(frame,[contour],-1,face_color,thickness=-1)
-
-    for i in range(4): #black lines
-        cv2.line(frame, (bottom[i,0],bottom[i,1]),(top[i,0],top[i,1]),edge_color,thickness)
-    #     cv2.line(frame,tuple(tag_corners[i]),tuple(tag_corners[0]),edge_color,thickness)
-    #     cv2.line(frame,tuple(cube_corners[i]),tuple(cube_corners[0]),edge_color,thickness)
+        # cv2.drawContours(frame,[s],-1,face_color,thickness) #filled in
     
     for i, point in enumerate(bottom):
         cv2.line(frame, tuple(point), tuple(top[i]), edge_color, thickness) 
 
     #draw square at top of cube and around AR tag (bottom of cube)
-    for i in range (4):
+    for j in range (4):
         if i==3: #connect last corner to first corner
-            cv2.line(frame,tuple(tag_corners[i]),tuple(tag_corners[0]),edge_color,thickness)
-            cv2.line(frame,tuple(cube_corners[i]),tuple(cube_corners[0]),edge_color,thickness)
+            cv2.line(frame,tuple(bottom[i]),tuple(bottom[0]),edge_color,thickness)
+            cv2.line(frame,tuple(top[i]),tuple(top[0]),edge_color,thickness)
         else:
-            cv2.line(frame,tuple(tag_corners[i]),tuple(tag_corners[i+1]),edge_color,thickness)
-            cv2.line(frame,tuple(cube_corners[i]),tuple(cube_corners[i+1]),edge_color,thickness)
+            cv2.line(frame,tuple(bottom[i]),tuple(bottom[i+1]),edge_color,thickness)
+            cv2.line(frame,tuple(top[i]),tuple(top[i+1]),edge_color,thickness)
 
     return frame
