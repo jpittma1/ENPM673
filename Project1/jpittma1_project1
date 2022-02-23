@@ -123,7 +123,7 @@ while(vid.isOpened()):
             #decode squared tile
             tag_img,tag_id_binary,orientation = decodeARtag(square_img)
             
-            #----PROBLEM 2a-------
+            #----PROBLEM 2a---TESTUDO-------
             if show_Testudo == True:
                 img_match_orientation=rotateTestudo(testudo, orientation)
                 
@@ -145,36 +145,49 @@ while(vid.isOpened()):
                 #put warped Testudo onto blank space
                 img_plus_testudo=cv2.bitwise_or(warped_frame,blank_frame)
                 
-            #----PROBLEM 2b------ 
+            #----PROBLEM 2b--CUBE------------------------
             if show_cube == True:   
-                edge_color = (0, 0, 0) #black
+                # edge_color = (0, 0, 0) #black
+                edge_color = (0,0, 255)#red
                 face_color = (0,0, 255) #red
-                # cube_dim=200 #200
-                # cube_dim=image1.shape[0]
+                # cube_dim = 150 #200
                 cube_dim=dim
-                # print("cube dimension size is ", cube_dim)
+                # print("dim is ", dim) #~~227-280
+                # print("image size is ", image1.shape[0])
                 
-                # cube_height=np.array([-(cube_dim-1),-(cube_dim-1),-(cube_dim-1),-(cube_dim-1)]).reshape(-1,1)
-                # cube_corners = np.concatenate((tag, cube_height), axis = 1)
-                # print("Cube corners are (concate): ", cube_corners)
+                print("AR tag corners are: ", tag)
+                
+                
                 # print("cube height is ", cube_height)
                 
                 #solve for points of cube directly above tag
-                # corner_dim=dim #match dimension of tag
-                H_cube=solveHomography(tag,cube_dim)
+                cube_height=np.array([-(cube_dim-1),-(cube_dim-1),-(cube_dim-1),-(cube_dim-1)]).reshape(-1,1)
+                
+                # cube_corners = np.concatenate((tag, cube_height), axis = 1)
+                cube_corners=tag-cube_height
+                
+                print("Cube corners are (concate): ", cube_corners)
+                
+                # H_cube=solveHomography(tag,cube_dim)
+                H_cube=solveHomographyCube(tag,cube_corners)
                 # print("Cube Homography Matrix of Cube is: ", H_cube)
-                # H_inv_cube=np.linalg.inv(H_cube)
-                # P=solveProjectionMatrix(K , H_inv_cube)
+
+
                 P=solveProjectionMatrix(K , H_cube)
                 # print("Projection Matrix of Cube is: ", P)
                 
                 #Project cube points above AR tag
-                cube_corners_P=projectionPoints(tag, P, H_cube, cube_dim)
+                # cube_corners_P=projectionPoints(cube_corners_tmp, P, H_cube, cube_dim)
+
+                cube_corners_P=projectionPoints(cube_corners, P, H_cube, cube_dim)
+                
+                # cube_corners_P=projectionPoints(tag, P, H_cube, cube_dim)
                 # cube_corners=solveCubePoints(tag, H_cube, P, cube_dim)
-                # print("Projected Cube corners are: ", cube_corners_P)
+                print("Projected Cube corners are: ", cube_corners_P)
                 
                 #draw contours, lines, and cube on top of AR tag
                 img_plus_cube=drawCube(tag, cube_corners_P,image1,face_color,edge_color)
+                # img_plus_cube=drawCube(tag, cube_corners,image1,face_color,edge_color)
                 
         #To save frame 133's as example pictures
         if count==133:
@@ -217,6 +230,8 @@ while(vid.isOpened()):
             out2.release()
 
 # vid.release()
+
+#-----Image Creation----
 frame133 = cv2.imread("1tagvideo_frame133.jpg")
 img_AR_only, img_AR=removeBackground(frame133)
 print ("Image with no background saved as 'img_no_background.jpg'")

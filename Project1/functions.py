@@ -191,7 +191,7 @@ def solveHomography(corners, dimension):
     A = np.empty([m, n])
     
     #A matrix is:
-    # Even rows (0,2,4,6): [[-x, -y, -1,0,0,0, x*x', y*x', x'],
+    # Even rows (0,2,4,6): [[x, y, 1,0,0,0, -x*x', -y*x', -x'],
     # Odd rows (1,3,5,7): [0,0,0, -x, -y, -1, x*y', y*y', y']]
 
     val = 0
@@ -360,53 +360,140 @@ def rotateTestudo(image, orientation):
 
     return new_img
 
+def solveHomographyCube(AR_corners, top_corners):
+    #Define the eight points to compute the homography matrix
+    x=[]
+    y=[]
+    xp=[]
+    yp=[]
+    
+    # x = AR_corners[:, 0]
+    # y = AR_corners[:, 1]
+    # xp = top_corners[:, 0]
+    # yp = top_corners[:, 1]
+    
+    #convert corners into x and y coordinates
+    for point in AR_corners:
+        x.append(point[0])
+        y.append(point[1])
+        
+    for point in top_corners:
+        xp.append(point[0])
+        yp.append(point[1])
+  
+    
+    # xp=[0,dimension,dimension,0]
+    # yp=[0,0,dimension,dimension]
+
+    #make A an 8x9 matrix
+    n = 9 #9 columns
+    m = 8 #8 rows
+    A = np.empty([m, n])
+    
+    #A matrix is:
+    # Even rows (0,2,4,6): [[x, y, 1,0,0,0, -x*x', -y*x', -x'],
+    # Odd rows (1,3,5,7): [0,0,0, -x, -y, -1, x*y', y*y', y']]
+
+    val = 0
+    for row in range(0,m):
+        if (row%2) == 0: #Even rows
+            A[row,0] = -x[val]
+            A[row,1] = -y[val]
+            A[row,2] = -1
+            A[row,3] = 0
+            A[row,4] = 0
+            A[row,5] = 0
+            A[row,6] = x[val]*xp[val]
+            A[row,7] = y[val]*xp[val]
+            A[row,8] = xp[val]
+
+        else: #odd rows
+            A[row,0] = 0
+            A[row,1] = 0
+            A[row,2] = 0
+            A[row,3] = -x[val]
+            A[row,4] = -y[val]
+            A[row,5] = -1
+            A[row,6] = x[val]*yp[val]
+            A[row,7] = y[val]*yp[val]
+            A[row,8] = yp[val]
+            val += 1
+
+    #Conduct SVD to get V
+    U,S,VT = np.linalg.svd(A)
+    # U,S,V = np.linalg.svd(A)
+    
+    V=VT.transpose()
+    
+    #Find the eigenvector column of V that corresponds to smallest value (last column)
+    # x=V[-1]
+    x = V[:,V.shape[1]-1] #9 values
+
+    # reshape x into 3x3 matrix to have H
+    H = np.reshape(x,[3,3])
+    
+    # H=H/H[2,2]
+    
+    return H
+
+
 def solveProjectionMatrix(K , H):
-    h_1=H[:,0]
-    h_2=H[:,1]
+    # h_1=H[:,0]
+    # h_2=H[:,1]
 
     K=np.transpose(K)
-
     K_inv=np.linalg.inv(K)
-    a=np.dot(K_inv,h_1)
-    c=np.dot(K_inv,h_2)
-
-    #Eq. 16
-    #lambda is average length of the first two columns of B
-    lamda=1/((np.linalg.norm(a)+np.linalg.norm(c))/2)
-
+    
     Bhat=np.dot(K_inv,H)
 
     #Eq.15
     #Ensure positive Bhat
-    if np.linalg.det(Bhat)>0:
+    if np.linalg.norm(Bhat)>0:
+    # if np.linalg.det(Bhat)>0:
         B=1*Bhat
     else:
         B=-1*Bhat
-
-    #Solve for rotation matrix and translation vector
+    
     b_1=B[:,0]
     b_2=B[:,1]
     b_3=B[:,2]
+
+    #Eq. 16
+    #lambda is average length of the first two columns of B
+    lamda=1/((np.linalg.norm(b_1)+np.linalg.norm(b_2))/2)
+
+    #Solve for rotation matrix and translation vector
+  
     r1=lamda*b_1
     r2=lamda*b_2
     r3=np.cross(r1,r2)
     t=lamda*b_3
 
+    # R_t=np.stack((r1,r2,r3,t),axis=1)
+    R_t=np.array([r1,r2, r3, t]).T
+    
     #Eq. 11: P = K * [R | t]
-    projectionMatrix=np.dot(K,(np.stack((r1,r2,r3,t), axis=1)))
-
+    P=np.dot(K,R_t)
+    # projectionMatrix=np.dot(K,R_t)
+    
+    projectionMatrix=P/P[2,3]
+    
     return projectionMatrix
 
 #solves for points directly above tag to build a cube from
-def projectionPoints(AR_corners, P, H, size):
+def projectionPoints(corners, P, H, size):
 
     projected_corners=[]
     #Separate corners of AR tag into x and y coordinates
     x = []
     y = []
-    for point in AR_corners:
+    # z = []
+  
+    for point in corners:
         x.append(point[0])
         y.append(point[1])
+        # z.append(point[2])
+
 
     # Camera homogenous coordinates
     # X_c1=[x1, x2,x3, x4],
@@ -414,27 +501,43 @@ def projectionPoints(AR_corners, P, H, size):
     #      [1,  1,  1,  1]
     
     #AR tag coordinates in image plane
-    X_c1 = np.stack((np.array(x),np.array(y),np.ones(len(x))))
+    # X_c1 = np.stack((np.array(x),np.array(y),np.ones(len(x))))
     # print("skewed camera bottom corner points ",X_c)
 
     #scaled homogenous coordinates in world frame
-    sX_s=np.dot(H,X_c1)
+    # sX_s=np.dot(H,X_c1)
 
     #normalize so last row is "1"
-    X_s=sX_s/sX_s[2]
+    # X_s=sX_s/sX_s[2,:]
 
     #points shifted in world frame
     # x(w)= [0, 0, −1,1]T
     #- z direction
-    X_w=np.stack((X_s[0],X_s[1],np.full(4,-size),np.ones(4)),axis=0)
+    # X_w=np.stack((X_s[0],X_s[1],np.full(4,-size),np.ones(len(x))),axis=0)
+    # X_w=np.stack((X_s[0],X_s[1],np.full(4,-size),np.ones(len(x))))
     # print("skewed camera top corner points ",X_w)
-
+    
+    # X_w=np.stack((np.array(x),np.array(y),np.full(4,1),np.ones(len(x))))
+    X_w=np.stack((np.array(x),np.array(y),np.full(4,1),np.ones(len(x))))
+    # X_w=np.stack((np.array(x),np.array(y),np.array(z),np.ones(len(x))))
+     
+    # X_w=np.stack((np.array(x),np.array(y),np.full(4,size),np.ones(len(x))))
+    # X_w=np.stack((np.array(x),np.array(y),np.full(4,-size),np.ones(len(x))))
+    # X_w=np.stack((np.array(x),np.array(y),np.ones(len(x))))
+    
     #use Projection Matrix to shift back to camera frame
     sX_c2=np.dot(P,X_w)
 
     #camera frame homography
-    X_c2=sX_c2/sX_c2[2]
-
+    X_c2=sX_c2/sX_c2[2,:]
+    # print("X_c2 is: ", X_c2)
+    
+    # X=X_c2[0,:].astype(int)
+    # Y=X_c2[1,:].astype(int)
+    
+    # projected_corners=np.dstack((X,Y)).reshape(4,2)
+    # projected_corners=np.dstack((x,y)).reshape(4,2)
+    
     for i in range(4):
         projected_corners.append([int(X_c2[0][i]),int(X_c2[1][i])])
         
@@ -445,7 +548,7 @@ def connectCubeCornerstoTag(AR_corners,cube_corners):
     #point 1 (i=0): (0,0), (1,0), (0,1), (1,1)
     
     for i in range(len(AR_corners)):
-        if i==3:
+        if i==3: #last corner
             p1 = AR_corners[i]
             p2 = AR_corners[0]
             p3 = cube_corners[0]
@@ -458,7 +561,8 @@ def connectCubeCornerstoTag(AR_corners,cube_corners):
         # print("Cube to AR points ", [p1,p2,p3,p4])
          #build array of connecting lines   
         lines.append(np.array([p1,p2,p3,p4], dtype=np.int32))
-        # print("Current contours ", contours[i])
+        # print("Current contours ", lines[i])
+        
         #append tag corners and top square corners
     lines.append(np.array([AR_corners[0],AR_corners[1],AR_corners[2],AR_corners[3]], dtype=np.int32))
     lines.append(np.array([cube_corners[0],cube_corners[1],cube_corners[2],cube_corners[3]], dtype=np.int32))
@@ -467,27 +571,34 @@ def connectCubeCornerstoTag(AR_corners,cube_corners):
 
 #draw cube based on scaled coordinates of cube points
 def drawCube(bottom, top,frame,face_color,edge_color):
-    thickness=3
+    thickness=5
     #-1 for fill; 0 for transparent
-    # cv2.drawContours(frame,[bottom],0,face_color,thickness)
-    # cv2.drawContours(frame,[top],0,face_color,thickness)
     
     #Lines connecting top and bottom of cube
     sides= connectCubeCornerstoTag(bottom, top)
     for s in sides: #red faces of cube
         cv2.drawContours(frame,[s],0,face_color,thickness)
-        # cv2.drawContours(frame,[s],-1,face_color,thickness) #filled in
+    #     # cv2.drawContours(frame,[s],-1,face_color,thickness) #filled in
     
-    for i, point in enumerate(bottom):
-        cv2.line(frame, tuple(point), tuple(top[i]), edge_color, thickness) 
-
+    # for i, point in enumerate(bottom):
+    #     # cv2.line(frame, tuple(point), tuple(top[i]), face_color, thickness)
+    #     cv2.line(frame, point, top[i], face_color, thickness) 
+        # print("point is ", point)
+        # print("top[i] is ", top[i])
+        
     #draw square at top of cube and around AR tag (bottom of cube)
-    for j in range (4):
+    for i in range (4):
         if i==3: #connect last corner to first corner
             cv2.line(frame,tuple(bottom[i]),tuple(bottom[0]),edge_color,thickness)
             cv2.line(frame,tuple(top[i]),tuple(top[0]),edge_color,thickness)
         else:
             cv2.line(frame,tuple(bottom[i]),tuple(bottom[i+1]),edge_color,thickness)
             cv2.line(frame,tuple(top[i]),tuple(top[i+1]),edge_color,thickness)
+    
+    # cv2.drawContours(frame, bottom, 0, face_color,thickness)
+    # cv2.drawContours(frame, top, 0, face_color,thickness)
+
+    # for i in range(4):
+    #     cv2.line(frame, tuple(bottom[i,0], bottom[i,1]), tuple(top[i,0], top[i,1]), edge_color, thickness)
 
     return frame
