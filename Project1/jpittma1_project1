@@ -23,7 +23,7 @@ K=np.array([[1346.10059534175,0,932.163397529403],
 #Recommend only 1 at a time
 show_contours = False
 show_Testudo = False
-show_cube = True
+show_cube = False
 
 #---Read the video, save a frame
 thresHold=180

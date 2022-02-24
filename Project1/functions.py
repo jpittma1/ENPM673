@@ -14,7 +14,6 @@ from numpy import linalg as LA
 import matplotlib.pyplot as plt
 import sys
 import math
-import time
 
 def findContours(frame,threshold):
     imgray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -191,7 +190,7 @@ def solveHomography(corners, dimension):
     A = np.empty([m, n])
     
     #A matrix is:
-    # Even rows (0,2,4,6): [[x, y, 1,0,0,0, -x*x', -y*x', -x'],
+    # Even rows (0,2,4,6): [[-x, -y, -1,0,0,0, x*x', y*x', x'],
     # Odd rows (1,3,5,7): [0,0,0, -x, -y, -1, x*y', y*y', y']]
 
     val = 0
@@ -259,8 +258,6 @@ def warp(H,image,h,w):
             else:
                 warped_img[new_y,new_x] = image[y,x]
 
-    
-    
     return warped_img
 
 def decodeARtag(frame):
@@ -367,11 +364,6 @@ def solveHomographyCube(AR_corners, top_corners):
     xp=[]
     yp=[]
     
-    # x = AR_corners[:, 0]
-    # y = AR_corners[:, 1]
-    # xp = top_corners[:, 0]
-    # yp = top_corners[:, 1]
-    
     #convert corners into x and y coordinates
     for point in AR_corners:
         x.append(point[0])
@@ -380,10 +372,6 @@ def solveHomographyCube(AR_corners, top_corners):
     for point in top_corners:
         xp.append(point[0])
         yp.append(point[1])
-  
-    
-    # xp=[0,dimension,dimension,0]
-    # yp=[0,0,dimension,dimension]
 
     #make A an 8x9 matrix
     n = 9 #9 columns
@@ -391,7 +379,7 @@ def solveHomographyCube(AR_corners, top_corners):
     A = np.empty([m, n])
     
     #A matrix is:
-    # Even rows (0,2,4,6): [[x, y, 1,0,0,0, -x*x', -y*x', -x'],
+    # Even rows (0,2,4,6): [[-x, -y, -1,0,0,0, x*x', y*x', x'],
     # Odd rows (1,3,5,7): [0,0,0, -x, -y, -1, x*y', y*y', y']]
 
     val = 0
@@ -420,65 +408,15 @@ def solveHomographyCube(AR_corners, top_corners):
             val += 1
 
     #Conduct SVD to get V
-    # U,S,VT = np.linalg.svd(A)
     U,S,V = np.linalg.svd(A)
-    
-    # V=VT.transpose()
     
     #Find the eigenvector column of V that corresponds to smallest value (last column)
     x=V[-1]
-    # x = V[:,V.shape[1]-1] #9 values
 
     # reshape x into 3x3 matrix to have H
     H = np.reshape(x,[3,3])
-    
-    # H=H/H[2,2]
-    
+
     return H
-
-
-# def solveProjectionMatrix(K , H):
-#     # h_1=H[:,0]
-#     # h_2=H[:,1]
-
-#     K=np.transpose(K)
-#     K_inv=np.linalg.inv(K)
-    
-#     Bhat=np.dot(K_inv,H)
-
-#     #Eq.15
-#     #Ensure positive Bhat
-#     if np.linalg.norm(Bhat)>0:
-#     # if np.linalg.det(Bhat)>0:
-#         B=1*Bhat
-#     else:
-#         B=-1*Bhat
-    
-#     b_1=B[:,0]
-#     b_2=B[:,1]
-#     b_3=B[:,2]
-
-#     #Eq. 16
-#     #lambda is average length of the first two columns of B
-#     lamda=1/((np.linalg.norm(b_1)+np.linalg.norm(b_2))/2)
-
-#     #Solve for rotation matrix and translation vector
-  
-#     r1=lamda*b_1
-#     r2=lamda*b_2
-#     r3=np.cross(r1,r2)
-#     t=lamda*b_3
-
-#     # R_t=np.stack((r1,r2,r3,t),axis=1)
-#     R_t=np.array([r1,r2, r3, t]).T
-    
-#     #Eq. 11: P = K * [R | t]
-#     # P=np.dot(K,R_t)
-#     projectionMatrix=np.dot(K,R_t)
-    
-#     # projectionMatrix=P/P[2,3]
-    
-#     return projectionMatrix
 
 def solveProjectionMatrix(K , H):
     # h_1=H[:,0]
@@ -498,9 +436,6 @@ def solveProjectionMatrix(K , H):
     b_1=B[:,0]
     b_2=B[:,1]
     b_3=B[:,2]
-    # col_1=rot_trans[:,0]
-    # col_2=rot_trans[:,1]
-    # col_3=rot_trans[:,2]
     
     #Eq. 16
     #lambda is average length of the first two columns of B
@@ -520,15 +455,10 @@ def solveProjectionMatrix(K , H):
     rot_2=np.dot(c/ np.linalg.norm(c,2) - d / np.linalg.norm(d,2), 1 / math.sqrt(2))
     rot_3=np.cross(rot_1,rot_2)
     
-    
     R_t=np.stack((rot_1,rot_2,rot_3,trans)).T
-    # R_t=np.array([r1,r2, r3, t]).T
     
     #Eq. 11: P = K * [R | t]
-    # P=np.dot(K,R_t)
     projectionMatrix=np.dot(K,R_t)
-    
-    # projectionMatrix=P/P[2,3]
     
     return projectionMatrix
 
@@ -544,21 +474,6 @@ def projectionPoints(corners, P):
         x.append(point[0])
         y.append(point[1])
         z.append(point[2]) #dimensions of cube in -z direction
-
-    # Camera homogenous coordinates
-    # X_c1= [x1, x2,x3, x4],
-    #      [y1, y2,y3, y4],
-    #      [1,  1,  1,  1]
-    
-    #AR tag coordinates in image plane
-    # X_c1 = np.stack((np.array(x),np.array(y),np.ones(len(x))))
-    # print("skewed camera AR Tag corner points ",X_c)
-
-    #scaled homogenous coordinates in world frame
-    # sX_s=np.dot(H,X_c1)
-
-    #normalize so last row is "1"
-    # X_s=sX_s/sX_s[2,:]
 
     #points shifted in world frame
       # X_w= [x1, x2,x3, x4],
@@ -576,11 +491,6 @@ def projectionPoints(corners, P):
     X_c2=sX_c2/sX_c2[2,:]
     # print("X_c2 is: ", X_c2)
     
-    # X=X_c2[0,:].astype(int)
-    # Y=X_c2[1,:].astype(int)
-    
-    # projected_corners=np.dstack((X,Y)).reshape(4,2)
-    # projected_corners=np.dstack((x,y)).reshape(4,2)
     
     for i in range(4):
         projected_corners.append([int(X_c2[0][i]),int(X_c2[1][i])])
