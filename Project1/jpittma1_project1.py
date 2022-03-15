@@ -255,3 +255,4 @@ if show_Testudo == True:
 if show_cube == True:
     out2.release()
 cv2.destroyAllWindows()
+plt.close('all')
